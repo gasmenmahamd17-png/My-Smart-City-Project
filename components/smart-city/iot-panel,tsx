@@ -1,0 +1,257 @@
+"use client"
+
+import { useMemo } from "react"
+import type { IoTSystemState, AIDecision } from "@/lib/iot-simulation"
+import { getSystemStats } from "@/lib/iot-simulation"
+
+function SparklineChart({ data, color, height = 32 }: { data: number[]; color: string; height?: number }) {
+  if (data.length < 2) return null
+  const max = Math.max(...data)
+  const min = Math.min(...data)
+  const range = max - min || 1
+
+  const points = data
+    .map((d, i) => {
+      const x = (i / (data.length - 1)) * 100
+      const y = height - ((d - min) / range) * (height - 4) - 2
+      return `${x},${y}`
+    })
+    .join(" ")
+
+  const areaPoints = `0,${height} ${points} 100,${height}`
+
+  return (
+    <svg viewBox={`0 0 100 ${height}`} className="w-full" style={{ height }}>
+      <defs>
+        <linearGradient id={`spark-${color.replace("#", "")}`} x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor={color} stopOpacity="0.3" />
+          <stop offset="100%" stopColor={color} stopOpacity="0" />
+        </linearGradient>
+      </defs>
+      <polygon points={areaPoints} fill={`url(#spark-${color.replace("#", "")})`} />
+      <polyline points={points} fill="none" stroke={color} strokeWidth="1.5" strokeLinecap="round" />
+    </svg>
+  )
+}
+
+function ZoneBar({ zone, lights, savings, avgBrightness }: { zone: string; lights: number; savings: number; avgBrightness: number }) {
+  const zoneLabels: Record<string, string> = {
+    central: "المنطقة المركزية",
+    residential: "المنطقة السكنية",
+    tech: "المنطقة التقنية",
+    industrial: "المنطقة الصناعية",
+    green: "المنطقة الخضراء",
+  }
+
+  const zoneColors: Record<string, string> = {
+    central: "#00d4ff",
+    residential: "#4dd0e1",
+    tech: "#00bcd4",
+    industrial: "#ff6b35",
+    green: "#00e676",
+  }
+
+  const color = zoneColors[zone] ?? "#00d4ff"
+
+  return (
+    <div className="flex items-center gap-2 py-1">
+      <div className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ background: color, boxShadow: `0 0 4px ${color}` }} />
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center justify-between">
+          <span className="text-[9px] font-mono truncate" style={{ color }}>{zoneLabels[zone] ?? zone}</span>
+          <span className="text-[9px] font-mono opacity-60" style={{ color }}>{lights} lights</span>
+        </div>
+        <div className="flex gap-1 mt-0.5">
+          <div className="flex-1 h-1 rounded-full overflow-hidden" style={{ background: `${color}15` }}>
+            <div
+              className="h-full rounded-full transition-all duration-500"
+              style={{ width: `${Math.round(avgBrightness * 100)}%`, background: color }}
+            />
+          </div>
+          <span className="text-[8px] font-mono opacity-50" style={{ color }}>{savings.toFixed(0)}%</span>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function AIDecisionLog({ decisions }: { decisions: AIDecision[] }) {
+  const latestDecisions = decisions.slice(-4)
+
+  if (latestDecisions.length === 0) {
+    return (
+      <div className="text-[9px] font-mono opacity-40 text-center py-2" style={{ color: "#00d4ff" }}>
+        Waiting for AI decisions...
+      </div>
+    )
+  }
+
+  return (
+    <div className="flex flex-col gap-1">
+      {latestDecisions.map((d, i) => (
+        <div
+          key={`${d.lightId}-${i}`}
+          className="flex items-start gap-1.5 text-[8px] font-mono"
+          style={{
+            color:
+              d.action === "increase"
+                ? "#00e676"
+                : d.action === "decrease"
+                  ? "#ff6b35"
+                  : d.action === "emergency"
+                    ? "#ff1744"
+                    : "#888",
+          }}
+        >
+          <span className="opacity-60 flex-shrink-0">{d.lightId}</span>
+          <span className="truncate">
+            {d.action === "increase" ? "+" : d.action === "decrease" ? "-" : "="}{" "}
+            {(d.targetBrightness * 100).toFixed(0)}%
+          </span>
+          <span className="opacity-40 ml-auto flex-shrink-0">{(d.confidence * 100).toFixed(0)}%</span>
+        </div>
+      ))}
+    </div>
+  )
+}
+
+export function IoTPanel({ state }: { state: IoTSystemState }) {
+  const stats = useMemo(() => getSystemStats(state), [state])
+
+  return (
+    <div className="absolute top-20 left-4 bottom-20 w-56 flex flex-col gap-2 pointer-events-auto overflow-y-auto" style={{ scrollbarWidth: "none" }}>
+      {/* Energy Overview */}
+      <div
+        className="px-3 py-2 rounded-lg border backdrop-blur-md"
+        style={{ background: "rgba(6, 13, 23, 0.85)", borderColor: "#00d4ff30" }}
+      >
+        <div className="flex items-center justify-between mb-1">
+          <span className="text-[10px] font-mono tracking-widest opacity-60" style={{ color: "#00d4ff" }}>
+            IoT ENERGY SYSTEM
+          </span>
+          <div className="flex items-center gap-1">
+            <div className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ background: "#00e676" }} />
+            <span className="text-[8px] font-mono" style={{ color: "#00e676" }}>LIVE</span>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-2 gap-2 mt-2">
+          <div>
+            <div className="text-[8px] font-mono opacity-50" style={{ color: "#00d4ff" }}>POWER</div>
+            <div className="text-lg font-bold font-mono" style={{ color: "#00d4ff" }}>
+              {(stats.totalPower / 1000).toFixed(1)}
+            </div>
+            <div className="text-[8px] font-mono opacity-40" style={{ color: "#00d4ff" }}>kW</div>
+          </div>
+          <div>
+            <div className="text-[8px] font-mono opacity-50" style={{ color: "#00e676" }}>SAVINGS</div>
+            <div className="text-lg font-bold font-mono" style={{ color: "#00e676" }}>
+              {stats.energySaved.toFixed(1)}
+            </div>
+            <div className="text-[8px] font-mono opacity-40" style={{ color: "#00e676" }}>%</div>
+          </div>
+        </div>
+
+        {stats.powerHistory.length > 2 && (
+          <div className="mt-2">
+            <SparklineChart data={stats.powerHistory} color="#00d4ff" />
+          </div>
+        )}
+      </div>
+
+      {/* Lights Status */}
+      <div
+        className="px-3 py-2 rounded-lg border backdrop-blur-md"
+        style={{ background: "rgba(6, 13, 23, 0.85)", borderColor: "#4dd0e130" }}
+      >
+        <div className="text-[10px] font-mono tracking-widest opacity-60 mb-2" style={{ color: "#4dd0e1" }}>
+          SMART LIGHTS
+        </div>
+
+        <div className="flex items-center justify-between mb-1">
+          <div className="flex items-baseline gap-1">
+            <span className="text-2xl font-bold font-mono" style={{ color: "#4dd0e1" }}>{stats.activeLights}</span>
+            <span className="text-[10px] font-mono opacity-40" style={{ color: "#4dd0e1" }}>/ {stats.totalLights}</span>
+          </div>
+          <div className="text-left">
+            <div className="text-[8px] font-mono opacity-50" style={{ color: "#4dd0e1" }}>AVG BRIGHTNESS</div>
+            <div className="text-sm font-bold font-mono" style={{ color: "#4dd0e1" }}>{stats.avgBrightness}%</div>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-1 mt-1">
+          <div className="w-1.5 h-1.5 rounded-full" style={{ background: "#ff6b35", boxShadow: "0 0 4px #ff6b35" }} />
+          <span className="text-[9px] font-mono" style={{ color: "#ff6b35" }}>
+            {stats.motionActive} motion events
+          </span>
+        </div>
+      </div>
+
+      {/* Zone Breakdown */}
+      <div
+        className="px-3 py-2 rounded-lg border backdrop-blur-md"
+        style={{ background: "rgba(6, 13, 23, 0.85)", borderColor: "#00d4ff20" }}
+      >
+        <div className="text-[10px] font-mono tracking-widest opacity-60 mb-1" style={{ color: "#00d4ff" }}>
+          ZONES
+        </div>
+        {stats.zoneStats.map((z) => (
+          <ZoneBar
+            key={z.zone}
+            zone={z.zone}
+            lights={z.lights}
+            savings={z.savings}
+            avgBrightness={z.avgBrightness}
+          />
+        ))}
+      </div>
+
+      {/* AI Decision Log */}
+      <div
+        className="px-3 py-2 rounded-lg border backdrop-blur-md"
+        style={{ background: "rgba(6, 13, 23, 0.85)", borderColor: "#ff6b3530" }}
+      >
+        <div className="flex items-center justify-between mb-1">
+          <span className="text-[10px] font-mono tracking-widest opacity-60" style={{ color: "#ff6b35" }}>
+            AI DECISIONS
+          </span>
+          <span className="text-[8px] font-mono opacity-40" style={{ color: "#ff6b35" }}>
+            {stats.aiDecisionCount} active
+          </span>
+        </div>
+        <AIDecisionLog decisions={state.aiDecisions} />
+      </div>
+
+      {/* Sensor Status */}
+      <div
+        className="px-3 py-2 rounded-lg border backdrop-blur-md"
+        style={{ background: "rgba(6, 13, 23, 0.85)", borderColor: "#00d4ff20" }}
+      >
+        <div className="text-[10px] font-mono tracking-widest opacity-60 mb-1" style={{ color: "#00d4ff" }}>
+          IoT SENSORS
+        </div>
+        <div className="grid grid-cols-3 gap-2">
+          <div className="text-center">
+            <div className="text-sm font-bold font-mono" style={{ color: "#00d4ff" }}>{state.motionSensors.length}</div>
+            <div className="text-[7px] font-mono opacity-40" style={{ color: "#00d4ff" }}>PIR</div>
+          </div>
+          <div className="text-center">
+            <div className="text-sm font-bold font-mono" style={{ color: "#4dd0e1" }}>{state.lightSensors.length}</div>
+            <div className="text-[7px] font-mono opacity-40" style={{ color: "#4dd0e1" }}>LDR</div>
+          </div>
+          <div className="text-center">
+            <div className="text-sm font-bold font-mono" style={{ color: "#ff6b35" }}>{stats.sensorCount}</div>
+            <div className="text-[7px] font-mono opacity-40" style={{ color: "#ff6b35" }}>TOTAL</div>
+          </div>
+        </div>
+
+        {stats.savingsHistory.length > 2 && (
+          <div className="mt-2">
+            <div className="text-[8px] font-mono opacity-40 mb-0.5" style={{ color: "#00e676" }}>ENERGY SAVINGS TREND</div>
+            <SparklineChart data={stats.savingsHistory} color="#00e676" height={24} />
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
