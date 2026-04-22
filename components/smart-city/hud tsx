@@ -1,0 +1,164 @@
+"use client"
+
+import { useState, useEffect, useCallback } from "react"
+
+export function CityHUD() {
+  const [time, setTime] = useState(new Date())
+
+  useEffect(() => {
+    const timer = setInterval(() => setTime(new Date()), 1000)
+    return () => clearInterval(timer)
+  }, [])
+
+  const [selectedDistrict, setSelectedDistrict] = useState<string | null>(null)
+
+  const handleDistrictClick = useCallback((district: string) => {
+    setSelectedDistrict((prev) => (prev === district ? null : district))
+  }, [])
+
+  return (
+    <div className="absolute inset-0 pointer-events-none z-10" dir="rtl">
+      {/* Top bar */}
+      <div className="absolute top-0 left-0 right-0 flex items-center justify-between px-6 py-4">
+        <div className="pointer-events-auto">
+          <h1 className="text-lg font-bold font-mono tracking-wider" style={{ color: "#00d4ff" }}>
+            SMART CITY
+          </h1>
+          <p className="text-[10px] font-mono opacity-50" style={{ color: "#00d4ff" }}>
+            VIRTUAL COMMAND CENTER v3.2
+          </p>
+        </div>
+        <div className="flex items-center gap-6">
+          <div className="text-left">
+            <div className="text-sm font-mono font-bold" style={{ color: "#00d4ff" }}>
+              {time.toLocaleTimeString("en-US", { hour12: false })}
+            </div>
+            <div className="text-[10px] font-mono opacity-50" style={{ color: "#00d4ff" }}>
+              {time.toLocaleDateString("ar-SA")}
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="w-2 h-2 rounded-full animate-pulse" style={{ background: "#4dd0e1" }} />
+            <span className="text-[10px] font-mono" style={{ color: "#4dd0e1" }}>
+              ONLINE
+            </span>
+          </div>
+        </div>
+      </div>
+
+      {/* Right panel - Districts & Stats */}
+      <div className="absolute top-20 right-4 w-48 flex flex-col gap-2 pointer-events-auto">
+        <div className="text-[10px] font-mono tracking-widest opacity-60 mb-1" style={{ color: "#00d4ff" }}>
+          DISTRICTS
+        </div>
+        {[
+          { name: "Central Business", status: "active", color: "#00d4ff" },
+          { name: "Residential Zone", status: "active", color: "#4dd0e1" },
+          { name: "Tech Hub", status: "active", color: "#00d4ff" },
+          { name: "Industrial", status: "maintenance", color: "#ff6b35" },
+          { name: "Green Zone", status: "active", color: "#4dd0e1" },
+        ].map((district) => (
+          <button
+            key={district.name}
+            onClick={() => handleDistrictClick(district.name)}
+            className="flex items-center gap-2 px-3 py-1.5 rounded border text-right transition-all"
+            style={{
+              background:
+                selectedDistrict === district.name
+                  ? `${district.color}15`
+                  : "rgba(6, 13, 23, 0.5)",
+              borderColor:
+                selectedDistrict === district.name
+                  ? `${district.color}50`
+                  : "transparent",
+            }}
+          >
+            <div
+              className="w-1.5 h-1.5 rounded-full flex-shrink-0"
+              style={{
+                background: district.color,
+                boxShadow: `0 0 6px ${district.color}`,
+              }}
+            />
+            <div className="flex-1">
+              <div className="text-[11px] font-mono" style={{ color: district.color }}>
+                {district.name}
+              </div>
+              <div
+                className="text-[8px] font-mono opacity-50"
+                style={{ color: district.status === "maintenance" ? "#ff6b35" : "#4dd0e1" }}
+              >
+                {district.status.toUpperCase()}
+              </div>
+            </div>
+          </button>
+        ))}
+
+        {/* System Overview */}
+        <div
+          className="px-3 py-2 rounded-lg border backdrop-blur-md mt-2"
+          style={{ background: "rgba(6, 13, 23, 0.7)", borderColor: "#00d4ff20" }}
+        >
+          <div className="text-[10px] font-mono tracking-widest opacity-60 mb-2" style={{ color: "#00d4ff" }}>
+            SYSTEM
+          </div>
+          <div className="flex flex-col gap-1.5">
+            {[
+              { label: "TRAFFIC", value: "1,247", color: "#ff6b35" },
+              { label: "AIR", value: "98.7 AQI", color: "#4dd0e1" },
+              { label: "NETWORK", value: "99.9%", color: "#00d4ff" },
+            ].map((stat) => (
+              <div key={stat.label} className="flex items-center justify-between">
+                <span className="text-[9px] font-mono opacity-50" style={{ color: stat.color }}>{stat.label}</span>
+                <span className="text-[11px] font-mono font-bold" style={{ color: stat.color }}>{stat.value}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* Bottom bar */}
+      <div className="absolute bottom-0 left-0 right-0 px-6 py-3 flex items-center justify-between">
+        <div className="flex items-center gap-4">
+          {["SENSORS: 12,847", "CAMERAS: 3,241", "DRONES: 48"].map((item) => (
+            <span key={item} className="text-[10px] font-mono opacity-40" style={{ color: "#00d4ff" }}>
+              {item}
+            </span>
+          ))}
+        </div>
+        <div className="flex items-center gap-4">
+          {["AI PROCESSING: 99.4%", "LATENCY: 2ms", "UPTIME: 99.99%"].map((item) => (
+            <span key={item} className="text-[10px] font-mono opacity-40" style={{ color: "#00d4ff" }}>
+              {item}
+            </span>
+          ))}
+        </div>
+      </div>
+
+      {/* Corner decorations */}
+      <svg className="absolute top-0 left-0 w-20 h-20 opacity-30" viewBox="0 0 80 80">
+        <path d="M 0 20 L 0 0 L 20 0" stroke="#00d4ff" strokeWidth="1" fill="none" />
+        <path d="M 0 40 L 0 0 L 40 0" stroke="#00d4ff" strokeWidth="0.5" fill="none" opacity="0.5" />
+      </svg>
+      <svg className="absolute top-0 right-0 w-20 h-20 opacity-30" viewBox="0 0 80 80">
+        <path d="M 60 0 L 80 0 L 80 20" stroke="#00d4ff" strokeWidth="1" fill="none" />
+        <path d="M 40 0 L 80 0 L 80 40" stroke="#00d4ff" strokeWidth="0.5" fill="none" opacity="0.5" />
+      </svg>
+      <svg className="absolute bottom-0 left-0 w-20 h-20 opacity-30" viewBox="0 0 80 80">
+        <path d="M 0 60 L 0 80 L 20 80" stroke="#00d4ff" strokeWidth="1" fill="none" />
+      </svg>
+      <svg className="absolute bottom-0 right-0 w-20 h-20 opacity-30" viewBox="0 0 80 80">
+        <path d="M 60 80 L 80 80 L 80 60" stroke="#00d4ff" strokeWidth="1" fill="none" />
+      </svg>
+
+      {/* Scan line effect */}
+      <div
+        className="absolute inset-0 pointer-events-none opacity-[0.03]"
+        style={{
+          backgroundImage:
+            "repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,212,255,0.1) 2px, rgba(0,212,255,0.1) 4px)",
+        }}
+      />
+    </div>
+  )
+}
